@@ -1,14 +1,25 @@
-*.tar
-*.tar.*
-*.jar
-*.exe
-*.msi
-*.deb
-*.zip
-*.tgz
-*.log
-*.log.*
-*.sig
+# Environment variables
+.env
+.env.*       # any other env variants
 
-pkg/
-src/
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# VSCode settings
+.vscode/
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+
+# virtual environments locally
+venv/
+.envs/
+env/
