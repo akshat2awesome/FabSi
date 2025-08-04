@@ -2,7 +2,11 @@ name: Daily CSV Generation and SQL Load
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # Runs every day at midnight UTC
+    - cron: '0 0 * * *'   # Runs daily at midnight UTC
+  push:
+    branches:
+      - main              # Change if your default branch is not main
+  workflow_dispatch:      # Enables manual trigger
 
 jobs:
   data_pipeline:
@@ -37,6 +41,3 @@ jobs:
 
       - name: Load CSVs into SQL tables
         run: python scripts/csvtosql.py
-
-
-        
