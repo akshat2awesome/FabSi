@@ -2,5 +2,4 @@ requests
 pandas
 pymysql
 python-dotenv
-# Add any other required packages here
 numpy
