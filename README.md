@@ -12,7 +12,7 @@ This project automates the collection, processing, and storage of semiconductor 
 🔁 Workflow:
 1. A script generates synthetic or collected data.
 2. The raw data is split into 5 category-specific CSVs.
-3. These CSVs are uploaded to a cloud PostgreSQL database (Neon).
+3. These CSVs are uploaded to a cloud MySQL database.
 4. The process is automated daily using GitHub Actions.
 
 🧪 Technologies Used:
