@@ -26,32 +26,34 @@ def get_connection():
         pymysql.connections.Connection or None: The connection object or None if connection fails.
     """
     # Load environment variables from a .env file.
-    # This is useful for local development. In a deployed environment (like GitHub Actions
-    # or a cloud host), you would set these as environment variables directly.
     load_dotenv()
-    
+
     try:
-        # Attempt to connect to the database using environment variables
-        timeout = 10
-        connection = pymysql.connect(
-            charset="utf8mb4",
-            connect_timeout=timeout,
-            cursorclass=pymysql.cursors.DictCursor,
-            db=os.getenv("MYSQL_DB", "defaultdb"),
-            host=os.getenv("MYSQL_HOST", "localhost"),
-            password=os.getenv("MYSQL_PASSWORD", ""),
-            read_timeout=timeout,
-            port=int(os.getenv("MYSQL_PORT", 3306)),
-            user=os.getenv("MYSQL_USER", ""),
-            write_timeout=timeout,
-            autocommit=True
-        )
+        # MySQL connection config dictionary
+        config = {
+            'user': os.getenv("MYSQL_USER"),
+            'password': os.getenv("MYSQL_PASSWORD"),
+            'host': os.getenv("MYSQL_HOST"),
+            'port': int(os.getenv("MYSQL_PORT", 3306)),
+            'db': os.getenv("MYSQL_DB", "defaultdb"),
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor, # Use DictCursor for pandas compatibility
+            'connect_timeout': 10
+        }
+
+        # Print current DB target for debugging (without password)
+        print("Connecting to MySQL with config:")
+        print({k: v for k, v in config.items() if k != 'password'})
+
+        # Establish connection using the config dictionary
+        connection = pymysql.connect(**config)
+        
         print("Database connection successful.")
         return connection
     except (pymysql.MySQLError, ValueError) as e:
         # Display an error message in the Streamlit app if the connection fails
         st.error(f"Error connecting to MySQL database: {e}")
-        st.error("Please ensure your .env file is correctly configured with database credentials.")
+        st.error("Please ensure your environment variables (.env file) are correctly configured.")
         return None
 
 # --- Data Fetching ---
@@ -70,9 +72,8 @@ def fetch_data(connection, table_name, limit):
 
     cursor = None
     try:
-        # Use the correct database name in the query
-        # The database name should be part of the connection string, but if you need
-        # to switch, this is how you would do it. Assuming Phase1 is the target DB.
+        # Ensure the correct database is selected for the query.
+        # This is important if the initial connection was to a different DB.
         connection.select_db("Phase1")
         cursor = connection.cursor()
         # Securely format the SQL query with the table name and a parameter for the limit
