@@ -4,6 +4,7 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 # --- Page Configuration ---
 # Set the page configuration for the Streamlit app.
 # This should be the first Streamlit command in your script.
@@ -16,64 +17,38 @@ st.set_page_config(
 
 # --- Database Connection ---
 # Use Streamlit's caching to store the database connection object.
-# This prevents re-establishing the connection on every user interaction, improving performance.
-@st.cache_resource
-def get_connection():
-    """
-    Establishes a connection to the MySQL database using credentials
-    from environment variables.
-    Returns:
-        pymysql.connections.Connection or None: The connection object or None if connection fails.
-    """
-    # Load environment variables from a .env file.
-    load_dotenv()
-
+def get_connection():    
     try:
-        # MySQL connection config dictionary
-        config = {
-            'user': os.getenv("MYSQL_USER"),
-            'password': os.getenv("MYSQL_PASSWORD"),
-            'host': os.getenv("MYSQL_HOST"),
-            'port': int(os.getenv("MYSQL_PORT", 3306)),
-            'db': os.getenv("MYSQL_DB", "defaultdb"),
-            'charset': 'utf8mb4',
-            'cursorclass': pymysql.cursors.DictCursor, # Use DictCursor for pandas compatibility
-            'connect_timeout': 10
-        }
-
-        # Print current DB target for debugging (without password)
-        print("Connecting to MySQL with config:")
-        print({k: v for k, v in config.items() if k != 'password'})
-
-        # Establish connection using the config dictionary
-        connection = pymysql.connect(**config)
-        
+        # Attempt to connect to the database using environment variables
+        timeout = 10
+        connection = pymysql.connect(
+            charset="utf8mb4",
+            connect_timeout=timeout,
+            cursorclass=pymysql.cursors.DictCursor,
+            db=os.getenv("MYSQL_DB", "defaultdb"),
+            host=os.getenv("MYSQL_HOST", "localhost"),
+            password=os.getenv("MYSQL_PASSWORD", ""),
+            read_timeout=timeout,
+            port=int(os.getenv("MYSQL_PORT", 3306)),
+            user=os.getenv("MYSQL_USER", ""),
+            write_timeout=timeout,
+            autocommit=True
+        )
         print("Database connection successful.")
         return connection
     except (pymysql.MySQLError, ValueError) as e:
         # Display an error message in the Streamlit app if the connection fails
         st.error(f"Error connecting to MySQL database: {e}")
-        st.error("Please ensure your environment variables (.env file) are correctly configured.")
+        st.error("Please ensure your .env file is correctly configured with database credentials.")
         return None
 
 # --- Data Fetching ---
 def fetch_data(connection, table_name, limit):
-    """
-    Fetches a specified number of rows from a given table.
-    Args:
-        connection (pymysql.connections.Connection): The database connection object.
-        table_name (str): The name of the table to fetch data from.
-        limit (int): The maximum number of rows to return.
-    Returns:
-        pandas.DataFrame: A DataFrame containing the fetched data, or an empty DataFrame on error.
-    """
     if connection is None:
         return pd.DataFrame()  # Return an empty DataFrame if there's no connection
 
     cursor = None
     try:
-        # Ensure the correct database is selected for the query.
-        # This is important if the initial connection was to a different DB.
         connection.select_db("Phase1")
         cursor = connection.cursor()
         # Securely format the SQL query with the table name and a parameter for the limit
@@ -87,11 +62,9 @@ def fetch_data(connection, table_name, limit):
         st.warning(f"Could not fetch data from table '{table_name}': {e}")
         return pd.DataFrame()
     finally:
-        # Ensure the cursor is closed after the query
         if cursor:
             cursor.close()
 
-# --- Main Application UI ---
 def main():
     """
     The main function that lays out the Streamlit user interface.
