@@ -1,13 +1,13 @@
 import streamlit as st
 import pymysql
-import os
 import pandas as pd
+import os
 from dotenv import load_dotenv
 
+# --- Load environment variables ---
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 # --- Page Configuration ---
-# Set the page configuration for the Streamlit app.
-# This should be the first Streamlit command in your script.
 st.set_page_config(
     page_title="Semiconductor Fab Dashboard",
     page_icon=None,
@@ -16,10 +16,8 @@ st.set_page_config(
 )
 
 # --- Database Connection ---
-# Use Streamlit's caching to store the database connection object.
-def get_connection():    
+def get_connection():
     try:
-        # Attempt to connect to the database using environment variables
         timeout = 10
         connection = pymysql.connect(
             charset="utf8mb4",
@@ -28,68 +26,57 @@ def get_connection():
             db=os.getenv("MYSQL_DB", "defaultdb"),
             host=os.getenv("MYSQL_HOST", "localhost"),
             password=os.getenv("MYSQL_PASSWORD", ""),
-            read_timeout=timeout,
             port=int(os.getenv("MYSQL_PORT", 3306)),
             user=os.getenv("MYSQL_USER", ""),
+            read_timeout=timeout,
             write_timeout=timeout,
             autocommit=True
         )
-        print("Database connection successful.")
+        print("✅ Database connection successful.")
         return connection
     except (pymysql.MySQLError, ValueError) as e:
-        # Display an error message in the Streamlit app if the connection fails
-        st.error(f"Error connecting to MySQL database: {e}")
-        st.error("Please ensure your .env file is correctly configured with database credentials.")
+        st.error(f"❌ Error connecting to MySQL database: {e}")
         return None
 
 # --- Data Fetching ---
 def fetch_data(connection, table_name, limit):
     if connection is None:
-        return pd.DataFrame()  # Return an empty DataFrame if there's no connection
+        return pd.DataFrame()
 
     cursor = None
     try:
+        # Switch to Phase1 schema
         connection.select_db("Phase1")
         cursor = connection.cursor()
-        # Securely format the SQL query with the table name and a parameter for the limit
         query = f"SELECT * FROM `{table_name}` LIMIT %s"
         cursor.execute(query, (limit,))
         data = cursor.fetchall()
-        # Convert the list of dictionaries to a pandas DataFrame for easy display
         return pd.DataFrame(data)
     except pymysql.MySQLError as e:
-        # Show a warning if a specific table can't be queried
-        st.warning(f"Could not fetch data from table '{table_name}': {e}")
+        st.warning(f"⚠️ Could not fetch data from `{table_name}`: {e}")
         return pd.DataFrame()
     finally:
         if cursor:
             cursor.close()
 
+# --- Streamlit App Layout ---
 def main():
-    """
-    The main function that lays out the Streamlit user interface.
-    """
     st.title("Semiconductor Fab Database Viewer")
     st.markdown(
         "View live data from the facility's operational database. "
-        "Use the controls in the sidebar to adjust the number of records displayed for each table."
+        "Use the controls in the sidebar to adjust the number of records displayed."
     )
 
-    # --- Sidebar Controls ---
     with st.sidebar:
         st.header("Controls")
-        # A number input widget to allow users to specify the record limit
         record_limit = st.number_input(
             label="Number of records to display",
             min_value=1,
             max_value=1000,
-            value=10, # Default value
+            value=10,
             step=5,
-            help="Select the number of rows you want to view from each table."
         )
 
-    # --- Main Content ---
-    # List of all tables you want to display on the dashboard
     table_names = [
         "Meteorology",
         "FacilityLogs",
@@ -98,25 +85,18 @@ def main():
         "WaferLotTracking"
     ]
 
-    # Get the database connection
     connection = get_connection()
 
     if connection:
-        # Iterate through the list of table names and display each one
         for table in table_names:
             st.subheader(f"Table: `{table}`")
             df = fetch_data(connection, table, record_limit)
-
             if not df.empty:
-                # Display the DataFrame using Streamlit's built-in function
                 st.dataframe(df, use_container_width=True)
             else:
-                # Show a message if the table is empty or doesn't exist
-                st.info(f"No data to display for table `{table}`. It might be empty or not yet created.")
+                st.info(f"No data to display for `{table}`.")
     else:
-        # A prominent error if the initial database connection failed
-        st.error("Could not connect to the database. Please check your environment variables and ensure the database server is running.")
+        st.error("Could not connect to the database. Check environment variables or connectivity.")
 
-# --- Script Entry Point ---
 if __name__ == "__main__":
     main()
